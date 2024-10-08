@@ -37,6 +37,7 @@ def clear():
         clearCMD = 'clear'
     os.system(clearCMD)
 
+
 def errorHandle(message, code):
     print(f'{colors.red}Error {str(code)}:{colors.reset} {message}')
     time.sleep(2)
@@ -64,16 +65,27 @@ def drawUI():
     index = 0
     with open(f"{riftFolder}repo.rift", "r") as f:
         lines = f.readlines()
+        cprint(f"{len(lines)} files available", colors.purple)
+        drawLine()
         for i in lines:
             i = i.removesuffix("\n")
             entry = i.split(";")
             if index == entryIndex:
                 cprint(entry[0], colors.green)
                 global selectedFile
+                description = entry[2]
                 selectedFile = entry[1]
+
             else:
                 print(entry[0])
             index = index + 1
+        drawLine()
+        print(description)
+        drawLine()
+
+def drawLine():
+    terminalX = os.get_terminal_size().columns
+    print("─" * terminalX)
 
 def commandPrompt():
     command = (input(f"{colors.purple}> {colors.reset}")).split(" ")
