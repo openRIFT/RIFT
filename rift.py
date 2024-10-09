@@ -13,6 +13,8 @@ import os
 import platform
 import sys
 import time
+import termios
+import tty
 
 # Init Vars
 class colors:
@@ -24,6 +26,10 @@ class colors:
 riftFolder = f"{os.path.expanduser('~')}/.rift/"
 entryIndex = 0
 homeFolder = os.path.expanduser('~')
+lastTermX = 0
+lastTermY = 1
+terminalX = 0
+terminalY = 1
 
 # Color printing
 def cprint(text, color=colors.reset):
@@ -62,6 +68,7 @@ def loadRepo(url):
         exit(1)
 
 def drawUI():
+    clear()
     index = 0
     with open(f"{riftFolder}repo.rift", "r") as f:
         lines = f.readlines()
@@ -88,7 +95,30 @@ def drawLine():
     print("─" * terminalX)
 
 def commandPrompt():
-    command = (input(f"{colors.purple}> {colors.reset}")).split(" ")
+    global cmdInput
+    print(f"{colors.purple}> {colors.reset}{cmdInput}")
+    orig_settings = termios.tcgetattr(sys.stdin)
+
+    tty.setcbreak(sys.stdin)
+    x = 0
+    while x != chr(27):
+        x = sys.stdin.read(1)[0]
+        cmdInput = cmdInput + x
+        if x == "\n":
+            commandList(cmdInput.removesuffix("\n").split(" "))
+            drawUI()
+            cmdInput = ""
+            return
+        elif x in ("\x08", "\x7f"):
+            cmdInput = cmdInput[:-2]
+            drawUI()
+            return
+        else:
+            drawUI()
+            return
+        termios.tcsetattr(sys.stdin, termios.TCSADRAIN, orig_settings)
+
+def commandList(command):
     if command[0] == "i":
         try:
             global entryIndex
@@ -105,12 +135,12 @@ def commandPrompt():
 
 def downloadFile(url):
     fileName = os.path.basename(url)
-    r = requests.get(url, stream=True) 
-  
+    r = requests.get(url, stream=True)
+
     with open(f"{homeFolder}/Downloads/{fileName}", "wb") as f:
         chunkSize = 8184
         totalChunks = 0
-        for chunk in r.iter_content(chunk_size=chunkSize): 
+        for chunk in r.iter_content(chunk_size=chunkSize):
             if chunk:
                 totalChunks = totalChunks + chunkSize
                 cprint(f"{str(round((totalChunks / 1048576), 2)).removesuffix(".0")}mb downloaded...", colors.green)
@@ -121,7 +151,13 @@ def downloadFile(url):
         cprint("Done!", colors.green)
 
 welcomeScreen()
+cmdInput = ""
+drawUI()
 while True:
-    clear()
-    drawUI()
+    if terminalX != lastTermX:
+        drawUI()
+    if terminalY != lastTermY:
+        drawUI()
+    terminalY = int(os.get_terminal_size().lines)
+    terminalX = int(os.get_terminal_size().columns)
     commandPrompt()
