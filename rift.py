@@ -125,6 +125,8 @@ def commandList(command):
             entryIndex = int(command[1]) - 1
         except IndexError:
             errorHandle("Invalid index, try i 2", 2)
+        except ValueError:
+            errorHandle("Invalid index, try i 2", 2)
     elif command[0] == "dl":
         downloadFile(selectedFile)
     elif command[0] == "exit":
