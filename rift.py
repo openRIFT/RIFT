@@ -15,24 +15,10 @@ import sys
 import time
 import termios
 import tty
-
-# Init Vars
-class colors:
-    red = Fore.LIGHTRED_EX
-    green = Fore.LIGHTGREEN_EX
-    blue = Fore.LIGHTBLUE_EX
-    purple = Fore.MAGENTA
-    reset = Style.RESET_ALL
-riftFolder = f"{os.path.expanduser('~')}/.rift/"
-entryIndex = 0
-homeFolder = os.path.expanduser('~')
-lastTermX = 0
-lastTermY = 1
-terminalX = 0
-terminalY = 1
+from datetime import datetime
 
 # Color printing
-def cprint(text, color=colors.reset):
+def cprint(text, color):
     print(f"{color}{text}{colors.reset}")
 
 # Determine clear command
@@ -46,26 +32,39 @@ def clear():
 
 def errorHandle(message, code):
     print(f'{colors.red}Error {str(code)}:{colors.reset} {message}')
+    log(message, 2)
     time.sleep(2)
 
 def welcomeScreen():
     clear()
     try:
         if sys.argv[1] != "": # Check if there was URL in the command
-            loadRepo(f"https://{sys.argv[1]}/repo.rift")
+            if sys.argv[1] == "local":
+                loadRepo("local")
+            else:
+                loadRepo(sys.argv[1])
     except IndexError:
         cprint("Welcome to Rift Rewrite", colors.purple)
         url = input("URL: ")
-        loadRepo(f"https://{url}/repo.rift")
+        loadRepo(url)
 
 def loadRepo(url):
     clear()
     cprint(f"Loading {url}", colors.purple)
-    try:
-        r = requests.get((url), allow_redirects=True)
-        open(f"{riftFolder}repo.rift", 'wb').write(r.content)
-    except FileNotFoundError:
-        exit(1)
+    if not url == "local":
+        try:
+            r = requests.get((f"https://{url}/repo.rift"), allow_redirects=True)
+            open(f"{riftFolder}repo.rift", 'wb').write(r.content)
+        except FileNotFoundError:
+            errorHandle("Could not find a repository file!", 3)
+            exit(1)
+    else:
+        log("Using local Repository, beware there may be issues!", 1)
+        cprint("Using local Repository, beware there may be issues!", colors.yellow)
+        if os.path.isfile(f"{riftFolder}repo.rift") is False:
+            errorHandle("Could not find a repository file!", 3)
+            exit(1)
+            
 
 def drawUI():
     clear()
@@ -89,6 +88,7 @@ def drawUI():
         drawLine()
         print(description)
         drawLine()
+    log("Drew UI")
 
 def drawLine():
     terminalX = os.get_terminal_size().columns
@@ -131,9 +131,10 @@ def commandList(command):
         downloadFile(selectedFile)
     elif command[0] == "exit":
         clear()
+        endLogging()
         sys.exit(0)
     else:
-        errorHandle("Invalid command", 1)
+        errorHandle(f"Invalid command: {command[0]}", 1)
 
 def downloadFile(url):
     fileName = os.path.basename(url)
@@ -148,9 +149,52 @@ def downloadFile(url):
                 cprint(f"{str(round((totalChunks / 1048576), 2)).removesuffix(".0")}mb downloaded...", colors.green)
                 try:
                     f.write(chunk)
+                    log(f"{str(round((totalChunks / 1048576), 2)).removesuffix(".0")}mb downloaded...")
                 except IOError:
                     errorHandle("Chunk failed to write", 3)
+                    log("File Chunk failed to write!", 2)
         cprint("Done!", colors.green)
+        log(f"Finished downloading {fileName}")
+
+def checkForLogFolder():
+    if os.path.exists(f"{riftFolder}/logs/") is False:
+        os.mkdir(f"{riftFolder}/logs/")
+
+def log(message, serverity=0):
+    checkForLogFolder()
+    if serverity == 0:
+        svString = "Info"
+    elif serverity == 1:
+        svString = "Warn"
+    elif serverity == 2:
+        svString = "Error"
+    else:
+        svString == "Unknown"
+    with open(f"{riftFolder}/logs/latest.log", "a") as f:
+        f.write(f"[{svString}] {message}\n")
+
+def endLogging():
+    log("Finished Logging!")
+    os.rename(f"{riftFolder}/logs/latest.log", f"{riftFolder}/logs/{datetime.today().strftime('%Y-%m-%d-%H:%M:%S')}.log")
+
+# Init Vars
+class colors:
+    red = Fore.LIGHTRED_EX
+    green = Fore.LIGHTGREEN_EX
+    blue = Fore.LIGHTBLUE_EX
+    purple = Fore.MAGENTA
+    yellow = Fore.LIGHTYELLOW_EX
+    reset = Style.RESET_ALL
+riftFolder = f"{os.path.expanduser('~')}/.rift/"
+entryIndex = 0
+homeFolder = os.path.expanduser('~')
+lastTermX = 0
+lastTermY = 1
+terminalX = 0
+terminalY = 1
+
+# Init Logging
+checkForLogFolder()
 
 welcomeScreen()
 cmdInput = ""
