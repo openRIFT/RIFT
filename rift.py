@@ -38,6 +38,13 @@ def errorHandle(message, code):
 def welcomeScreen():
     clear()
     try:
+        if sys.argv[2] != "":
+            global cliMode
+            cliMode = True
+            loadRepo(sys.argv[1])
+    except IndexError:
+        pass
+    try:
         if sys.argv[1] != "": # Check if there was URL in the command
             if sys.argv[1] == "local":
                 loadRepo("local")
@@ -49,8 +56,9 @@ def welcomeScreen():
         loadRepo(url)
 
 def loadRepo(url):
-    clear()
-    cprint(f"Loading {url}", colors.purple)
+    if cliMode is False:
+        clear()
+        cprint(f"Loading {url}", colors.purple)
     if not url == "local":
         try:
             r = requests.get((f"https://{url}/repo.rift"), allow_redirects=True)
@@ -77,22 +85,26 @@ def drawUI():
             i = i.removesuffix("\n")
             entry = i.split(";")
             if index == entryIndex:
-                cprint(entry[0], colors.green)
+                if cliMode is False:
+                    cprint(f"{index + 1}: {entry[0]}", colors.green)
+                else:
+                    print(f"{index + 1}: {entry[0]}")
                 global selectedFile
                 description = entry[2]
                 selectedFile = entry[1]
-
             else:
-                print(entry[0])
+                print(f"{index + 1}: {entry[0]}")
             index = index + 1
         drawLine()
-        print(description)
+        if cliMode is False:
+            print(f"Description: {description}")
         drawLine()
     log("Drew UI")
 
 def drawLine():
-    terminalX = os.get_terminal_size().columns
-    print("─" * terminalX)
+    if cliMode is False:
+        terminalX = os.get_terminal_size().columns
+        print("─" * terminalX)
 
 def commandPrompt():
     global cmdInput
@@ -160,18 +172,33 @@ def checkForLogFolder():
     if os.path.exists(f"{riftFolder}/logs/") is False:
         os.mkdir(f"{riftFolder}/logs/")
 
-def log(message, serverity=0):
+def log(message, severity=0):
     checkForLogFolder()
-    if serverity == 0:
+    if severity == 0:
         svString = "Info"
-    elif serverity == 1:
+    elif severity == 1:
         svString = "Warn"
-    elif serverity == 2:
+    elif severity == 2:
         svString = "Error"
     else:
         svString == "Unknown"
     with open(f"{riftFolder}/logs/latest.log", "a") as f:
         f.write(f"[{svString}] {message}\n")
+
+def cliParse():
+    if sys.argv[2] == "list":
+        drawUI()
+    if sys.argv[2] == "dl":
+        print("Downloading...")
+        try:
+            global entryIndex
+            with open(f"{riftFolder}repo.rift", "r") as f:
+                lines = f.readlines()
+                entry = lines[int(sys.argv[3]) - 1].split(";")
+            selectedFile = entry[1]
+            downloadFile(selectedFile)
+        except TypeError:
+            errorHandle("No index specified, find index with rift [URL] list", 1)
 
 def endLogging():
     log("Finished Logging!")
@@ -197,13 +224,16 @@ terminalY = 1
 checkForLogFolder()
 
 welcomeScreen()
-cmdInput = ""
-drawUI()
-while True:
-    if terminalX != lastTermX:
-        drawUI()
-    if terminalY != lastTermY:
-        drawUI()
-    terminalY = int(os.get_terminal_size().lines)
-    terminalX = int(os.get_terminal_size().columns)
-    commandPrompt()
+if cliMode is False:
+    cmdInput = ""
+    drawUI()
+    while True:
+        if terminalX != lastTermX:
+            drawUI()
+        if terminalY != lastTermY:
+            drawUI()
+        terminalY = int(os.get_terminal_size().lines)
+        terminalX = int(os.get_terminal_size().columns)
+        commandPrompt()
+else:
+    cliParse()
