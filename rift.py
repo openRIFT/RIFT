@@ -17,6 +17,8 @@ import termios
 import tty
 from datetime import datetime
 
+riftversion = "git"
+
 # Color printing
 def cprint(text, color):
     print(f"{color}{text}{colors.reset}")
@@ -51,7 +53,7 @@ def welcomeScreen():
             else:
                 loadRepo(sys.argv[1])
     except IndexError:
-        cprint("Welcome to Rift Rewrite", colors.purple)
+        cprint(f"Welcome to Rift version {riftversion}!", colors.purple)
         url = input("URL: ")
         loadRepo(url)
 
