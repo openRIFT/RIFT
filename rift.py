@@ -17,7 +17,8 @@ import termios
 import tty
 from datetime import datetime
 
-riftversion = "git"
+riftversion = "24.11.2"
+cliMode = False
 
 # Color printing
 def cprint(text, color):
