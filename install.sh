@@ -20,4 +20,4 @@ sudo cp rift.py $1/rift
 sudo chmod +x$1/rift
 
 # Run
-rift 0stormy.me list
+rift
